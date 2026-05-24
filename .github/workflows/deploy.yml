@@ -1,0 +1,38 @@
+name: Add CI/CD workflow for ventas deployment
+
+on:
+  push:
+    branches: [ deploy ]
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: hapema/innovatech-ventas:latest
+
+      - name: Deploy to EC2 Backend via jump host
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.EC2_FRONTEND_HOST }}
+          username: ec2-user
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            ssh -i ~/.ssh/innovatech-key.pem -o StrictHostKeyChecking=no ec2-user@${{ secrets.EC2_BACKEND_HOST }} "
+              cd ~/innovatech-ventas &&
+              docker-compose --env-file ~/.env.ventas pull &&
+              docker-compose --env-file ~/.env.ventas up -d
+            "
