@@ -3,6 +3,13 @@ services:
     image: mysql:8.0
     container_name: mysql-ventas
     restart: always
+    command: >
+      --innodb-buffer-pool-size=128M
+      --innodb-log-buffer-size=16M
+      --max-connections=50
+      --performance-schema=OFF
+    mem_limit: 400m
+    memswap_limit: 400m
     environment:
       MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
       MYSQL_DATABASE: ${DB_NAME}
@@ -15,14 +22,18 @@ services:
     networks:
       - ventas-network
     healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_PASSWORD}"]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 60s
+
   backend:
     image: hapema/innovatech-ventas:latest
     container_name: backend-ventas
     restart: always
+    mem_limit: 350m
+    memswap_limit: 350m
     ports:
       - "8082:8082"
     environment:
